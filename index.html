@@ -1,19 +1,49 @@
-<script>
-const API_URL = 'https://brocki-scanner.onrender.com';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brocki Scanner</title>
+<style>
+body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+button { padding: 10px 15px; margin: 5px 0; }
+#preview img { max-width: 300px; display: block; margin: 10px 0; }
+#results, #error { background: #fff; padding: 15px; border-radius: 8px; margin-top: 10px; display: none; }
+#error { color: red; }
+#loading { display: none; margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>Brocki Scanner</h1>
 
+<input type="file" id="cameraInput" accept="image/*" capture="environment">
+<div id="preview"><img id="previewImg" src=""><button id="retakeBtn">Retake</button></div>
+
+<input type="text" id="searchInput" placeholder="e.g. iPhone 13">
+<button id="searchBtn">Search</button>
+
+<div id="loading">Loading...</div>
+<div id="error"></div>
+<div id="results"></div>
+
+<script>
+const API_URL = 'https://brocki-scanner.onrender.com'; // Dein Render-Backend
 const cameraInput = document.getElementById('cameraInput');
 const previewImg = document.getElementById('previewImg');
 const preview = document.getElementById('preview');
-const results = document.getElementById('results');
+const retakeBtn = document.getElementById('retakeBtn');
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
 const loading = document.getElementById('loading');
 const error = document.getElementById('error');
+const results = document.getElementById('results');
 
 let currentImage = null;
 
+// Kamera Input
 cameraInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
         currentImage = event.target.result;
@@ -24,52 +54,92 @@ cameraInput.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
+// Retake Foto
+retakeBtn.addEventListener('click', () => {
+    preview.style.display = 'none';
+    results.style.display = 'none';
+    currentImage = null;
+});
+
+// Manueller Suchbutton
+searchBtn.addEventListener('click', () => {
+    const query = searchInput.value.trim();
+    if (!query) return;
+    searchProduct(query);
+});
+
+// ENTER-Taste für Suche
+searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') searchBtn.click();
+});
+
+// Funktion: Bild analysieren (senden an Backend)
 async function analyzeImage(imageData) {
     try {
-        showLoading('Analyzing product...');
+        showLoading('Analyzing...');
         hideError();
         results.style.display = 'none';
 
-        // POST an das Backend (korrekte Route!)
         const response = await fetch(`${API_URL}/api/search`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                query: imageData // hier nur Platzhalter; für Textsuche backend-kompatibel
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: imageData }) // hier Backend nur Text erwartet, sonst anpassen
         });
 
         if (!response.ok) throw new Error(`Server returned ${response.status}`);
 
         const data = await response.json();
 
-        if (data.error) {
-            showError(data.error);
-        } else {
-            displayResults(data, imageData);
-        }
+        if (data.error) showError(data.error);
+        else displayResults(data);
 
         hideLoading();
     } catch (err) {
-        console.error('Analysis error:', err);
+        console.error(err);
         showError('Connection failed. Make sure the backend is running.');
         hideLoading();
     }
 }
 
-function displayResults(data, query) {
+// Funktion: Manueller Text-Suche
+async function searchProduct(query) {
+    try {
+        showLoading('Searching...');
+        hideError();
+        results.style.display = 'none';
+
+        const response = await fetch(`${API_URL}/api/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+        });
+
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+
+        const data = await response.json();
+
+        if (data.error) showError(data.error);
+        else displayResults(data);
+
+        hideLoading();
+    } catch (err) {
+        console.error(err);
+        showError('Search failed. Make sure the backend is running.');
+        hideLoading();
+    }
+}
+
+// Ergebnisse anzeigen
+function displayResults(data) {
     results.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
     results.style.display = 'block';
 }
 
 // Hilfsfunktionen
-function showLoading(msg) {
-    loading.style.display = 'block';
-    loading.querySelector('p').textContent = msg;
-}
+function showLoading(msg) { loading.style.display = 'block'; loading.textContent = msg; }
 function hideLoading() { loading.style.display = 'none'; }
 function showError(msg) { error.style.display = 'block'; error.textContent = msg; }
 function hideError() { error.style.display = 'none'; }
 </script>
+</body>
+</html>
