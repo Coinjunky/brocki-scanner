@@ -385,7 +385,7 @@ def analyze_product():
         }
         
         print(f"\nResults: {len(all_listings)} total listings found")
-        print(f"={'*60}\n")
+        print(f"{'='*60}\n")
         
         return jsonify(result)
         
