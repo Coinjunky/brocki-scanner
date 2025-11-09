@@ -1,75 +1,642 @@
-<script>
-const API_URL = 'https://brocki-scanner.onrender.com';
-
-const cameraInput = document.getElementById('cameraInput');
-const previewImg = document.getElementById('previewImg');
-const preview = document.getElementById('preview');
-const results = document.getElementById('results');
-const loading = document.getElementById('loading');
-const error = document.getElementById('error');
-
-let currentImage = null;
-
-cameraInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        currentImage = event.target.result;
-        previewImg.src = currentImage;
-        preview.style.display = 'block';
-        analyzeImage(currentImage);
-    };
-    reader.readAsDataURL(file);
-});
-
-async function analyzeImage(imageData) {
-    try {
-        showLoading('Analyzing product...');
-        hideError();
-        results.style.display = 'none';
-
-        // POST an das Backend (korrekte Route!)
-        const response = await fetch(`${API_URL}/api/search`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                query: imageData // hier nur Platzhalter; für Textsuche backend-kompatibel
-            })
-        });
-
-        if (!response.ok) throw new Error(`Server returned ${response.status}`);
-
-        const data = await response.json();
-
-        if (data.error) {
-            showError(data.error);
-        } else {
-            displayResults(data, imageData);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Brocki Scanner</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        hideLoading();
-    } catch (err) {
-        console.error('Analysis error:', err);
-        showError('Connection failed. Make sure the backend is running.');
-        hideLoading();
-    }
-}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
 
-function displayResults(data, query) {
-    results.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
-    results.style.display = 'block';
-}
+        .header {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-// Hilfsfunktionen
-function showLoading(msg) {
-    loading.style.display = 'block';
-    loading.querySelector('p').textContent = msg;
-}
-function hideLoading() { loading.style.display = 'none'; }
-function showError(msg) { error.style.display = 'block'; error.textContent = msg; }
-function hideError() { error.style.display = 'none'; }
-</script>
+        .header h1 {
+            font-size: 1.5em;
+            color: #667eea;
+            text-align: center;
+        }
+
+        .container {
+            padding: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .camera-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .camera-btn {
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .camera-btn:active {
+            transform: scale(0.98);
+        }
+
+        .camera-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #cameraInput {
+            display: none;
+        }
+
+        .preview {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .preview img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .manual-search {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .manual-search h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .search-btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .search-btn:active {
+            transform: scale(0.98);
+        }
+
+        .loading {
+            background: white;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .recognition {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .recognition h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .labels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .label {
+            background: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .stat-card h4 {
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .stat-card .sub {
+            font-size: 0.85em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .platform {
+            margin-bottom: 20px;
+        }
+
+        .platform-header {
+            background: #f8f9ff;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .platform-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .platform-stats {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        .listing {
+            background: #f8f9ff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .listing-title {
+            font-size: 0.9em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .listing-price {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .install-prompt {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .install-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        @media (min-width: 400px) {
+            .stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📸 Brocki Scanner</h1>
+    </div>
+
+    <div class="container">
+        <div id="installPrompt" class="install-prompt">
+            <p><strong>💡 Tip:</strong> Install this app to your home screen for quick access!</p>
+            <button id="installBtn" class="install-btn">Install App</button>
+        </div>
+
+        <div class="camera-section">
+            <button id="cameraBtn" class="camera-btn">
+                <span>📷</span>
+                <span>Take Photo</span>
+            </button>
+            <input type="file" id="cameraInput" accept="image/*" capture="environment">
+            
+            <div id="preview" class="preview" style="display: none;">
+                <img id="previewImg" src="" alt="Preview">
+                <button id="retakeBtn" class="search-btn" style="margin-top: 10px;">Retake Photo</button>
+            </div>
+        </div>
+
+        <div class="manual-search">
+            <h3>Or search manually</h3>
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="search-input" 
+                placeholder="e.g. iPhone 13, Nike shoes..."
+            >
+            <button id="searchBtn" class="search-btn">Search</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Analyzing product...</p>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="results" class="results" style="display: none;"></div>
+    </div>
+
+    <script>
+        // API Configuration
+      const API_URL = 'https://brocki-scanner.onrender.com/';
+      
+
+        // Elements
+        const cameraBtn = document.getElementById('cameraBtn');
+        const cameraInput = document.getElementById('cameraInput');
+        const preview = document.getElementById('preview');
+        const previewImg = document.getElementById('previewImg');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+
+        let currentImage = null;
+        let deferredPrompt = null;
+
+        // Camera functionality
+        cameraBtn.addEventListener('click', () => {
+            cameraInput.click();
+        });
+
+        cameraInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentImage = e.target.result;
+                    previewImg.src = currentImage;
+                    preview.style.display = 'block';
+                    analyzeImage(currentImage);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        retakeBtn.addEventListener('click', () => {
+            preview.style.display = 'none';
+            currentImage = null;
+            results.style.display = 'none';
+            error.style.display = 'none';
+        });
+
+        // Manual search
+        searchBtn.addEventListener('click', () => {
+            const query = searchInput.value.trim();
+            if (query) {
+                searchManually(query);
+            }
+        });
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+
+        // Image analysis - Send to backend
+        async function analyzeImage(imageData) {
+            try {
+                showLoading('Analyzing with AI... (this may take 10-30 seconds on first try)');
+                hideError();
+                results.style.display = 'none';
+
+                // Send image to our backend for analysis
+                const response = await fetch(`${API_URL}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        query: ''
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Handle errors from backend
+                if (data.error) {
+                    let errorMsg = data.error;
+                    if (data.suggestion) {
+                        errorMsg += '\n\n' + data.suggestion;
+                    }
+                    if (data.debug_info) {
+                        console.log('Debug info:', data.debug_info);
+                    }
+                    showError(errorMsg);
+                    hideLoading();
+                    return;
+                }
+                
+                if (data.recognition && data.recognition.product_name) {
+                    displayResults(data, data.recognition.product_name, data.recognition.labels || []);
+                } else if (data.recognition && !data.recognition.success) {
+                    showError(data.recognition.error || 'Could not identify product. Please try manual search.');
+                } else {
+                    showError('Could not identify product. Please try manual search.');
+                }
+                
+                hideLoading();
+            } catch (err) {
+                console.error('Analysis error:', err);
+                let errorMsg = 'Connection failed. ';
+                
+                if (err.message.includes('Failed to fetch')) {
+                    errorMsg += 'Make sure the backend is running and accessible.';
+                } else {
+                    errorMsg += 'Please try manual search or check your connection.';
+                }
+                
+                showError(errorMsg);
+                hideLoading();
+            }
+        }
+
+        // Search product across platforms
+        async function searchProduct(query, labels = []) {
+            try {
+                showLoading(`Searching for "${query}"...`);
+                hideError();
+
+                const response = await fetch(`${API_URL}/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Search failed');
+                }
+
+                const data = await response.json();
+                displayResults(data, query, labels);
+                hideLoading();
+            } catch (err) {
+                console.error('Search error:', err);
+                showError('Search failed. Make sure the backend is running or try again.');
+                hideLoading();
+            }
+        }
+
+        // Manual search
+        async function searchManually(query) {
+            await searchProduct(query);
+        }
+
+        // Display results
+        function displayResults(data, productName, labels = []) {
+            // If data comes from analyze endpoint, extract stats from nested structure
+            const stats = data.stats ? data.stats.overall : data.stats;
+            const allListings = data.all_listings || [];
+            
+            if (!stats || stats.count === 0) {
+                results.innerHTML = `
+                    <div class="empty">
+                        <h3>No listings found</h3>
+                        <p>Try a different search term</p>
+                    </div>
+                `;
+                results.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+
+            // Recognition info
+            if (productName) {
+                html += `
+                    <div class="recognition">
+                        <h3>🎯 ${productName}</h3>
+                        ${labels.length > 0 ? `
+                            <div class="labels">
+                                ${labels.map(l => `<span class="label">${l}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            // Price stats
+            html += `
+                <div class="stats">
+                    <div class="stat-card">
+                        <h4>Lowest</h4>
+                        <div class="value">CHF ${stats.min}</div>
+                        <div class="sub">${stats.count} items</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Median</h4>
+                        <div class="value">CHF ${stats.median}</div>
+                        <div class="sub">Fair price</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Highest</h4>
+                        <div class="value">CHF ${stats.max}</div>
+                        <div class="sub">Avg: CHF ${stats.average}</div>
+                    </div>
+                </div>
+            `;
+
+            // Platform listings
+            const listings = data.listings || {};
+            ['ricardo', 'tutti', 'ebay'].forEach(platform => {
+                const platformListings = listings[platform];
+                if (platformListings && platformListings.length > 0) {
+                    const platformStats = data.stats ? data.stats[platform] : null;
+                    const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
+                    
+                    html += `
+                        <div class="platform">
+                            <div class="platform-header">
+                                <div class="platform-name">${platformName}${platform === 'ebay' ? ' (Sold)' : ''}</div>
+                                ${platformStats ? `
+                                    <div class="platform-stats">
+                                        ${platformStats.count} listings | CHF ${platformStats.min} - CHF ${platformStats.max}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${platformListings.slice(0, 5).map(item => `
+                                <div class="listing">
+                                    <div class="listing-title">${item.title}</div>
+                                    <div class="listing-price">CHF ${item.price}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            });
+
+            results.innerHTML = html;
+            results.style.display = 'block';
+        }
+
+        // UI helpers
+        function showLoading(message = 'Loading...') {
+            loading.querySelector('p').textContent = message;
+            loading.style.display = 'block';
+        }
+
+        function hideLoading() {
+            loading.style.display = 'none';
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function hideError() {
+            error.style.display = 'none';
+        }
+
+        // PWA Install
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installPrompt.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installPrompt.style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        });
+
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {
+                console.log('Service Worker registration failed');
+            });
+        }
+    </script>
+</body>
+</html>
