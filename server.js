@@ -1,52 +1,24 @@
-import express from "express";
-import cors from "cors";
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+app.use(cors()); // allow cross-origin requests
+app.use(bodyParser.json({ limit: '10mb' })); // for large images
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+app.get('/health', (req, res) => res.json({ message: "Brocki Scanner API is alive!" }));
 
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "OK" });
+app.post('/analyze', (req, res) => {
+    const { image, query } = req.body;
+    // do your AI/image processing here
+    res.json({ recognition: { product_name: "Sample Product", labels: ["tag1", "tag2"] }, stats: {} });
 });
 
-// Root
-app.get("/", (req, res) => {
-  res.send("Brocki Scanner API ✅");
+app.post('/search', (req, res) => {
+    const { query } = req.body;
+    // do your product search here
+    res.json({ listings: {}, stats: {} });
 });
 
-// Product search route (already existing)
-app.post("/api/search", (req, res) => {
-  console.log("POST /api/search body:", req.body);
-
-  const query = req.body.query || "none";
-
-  res.json({
-    success: true,
-    message: "Search completed",
-    query
-  });
-});
-
-// New image analyze route
-app.post("/analyze", (req, res) => {
-  console.log("POST /analyze:", req.body);
-
-  // Simulated response
-  res.json({
-    success: true,
-    message: "Image analyzed successfully ✅",
-    data: {
-      detected: "Example category",
-      confidence: 0.87
-    }
-  });
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server running on port ${port}`));
