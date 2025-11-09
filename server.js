@@ -1,24 +1,52 @@
-const express = require('express');
-const cors = require('cors');
+import express from "express";
+import cors from "cors";
 
 const app = express();
+const PORT = process.env.PORT || 10000;
 
-// **CORS aktivieren**
+// Middleware
 app.use(cors());
-
-// Body-Parser (für POST-Anfragen)
 app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.send('Backend läuft');
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ status: "OK" });
 });
 
-// Beispiel Analyze-Route
-app.post('/analyze', (req, res) => {
-  const { image, query } = req.body;
-  // hier Analyse-Code
-  res.json({ success: true, message: 'Analyze funktioniert!' });
+// Root
+app.get("/", (req, res) => {
+  res.send("Brocki Scanner API ✅");
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server läuft auf Port ${PORT}`));
+// Product search route (already existing)
+app.post("/api/search", (req, res) => {
+  console.log("POST /api/search body:", req.body);
+
+  const query = req.body.query || "none";
+
+  res.json({
+    success: true,
+    message: "Search completed",
+    query
+  });
+});
+
+// New image analyze route
+app.post("/analyze", (req, res) => {
+  console.log("POST /analyze:", req.body);
+
+  // Simulated response
+  res.json({
+    success: true,
+    message: "Image analyzed successfully ✅",
+    data: {
+      detected: "Example category",
+      confidence: 0.87
+    }
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
