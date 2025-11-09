@@ -9,6 +9,7 @@
     <title>Brocki Scanner</title>
     <link rel="manifest" href="manifest.json">
     <style>
+        /* dein Style bleibt unverändert */
         * {
             margin: 0;
             padding: 0;
@@ -314,6 +315,7 @@
     </div>
 
     <div class="container">
+
         <div id="installPrompt" class="install-prompt">
             <p><strong>💡 Tip:</strong> Install this app to your home screen for quick access!</p>
             <button id="installBtn" class="install-btn">Install App</button>
@@ -354,11 +356,12 @@
     </div>
 
     <script>
-        // API Configuration
-      const API_URL = 'https://brocki-scanner.onrender.com/';
-      
 
-        // Elements
+        // ✅ FIXED API URL
+        const API_URL = 'https://brocki-scanner.onrender.com';
+
+        // ✅ Deine restliche JS Datei bleibt exakt gleich
+
         const cameraBtn = document.getElementById('cameraBtn');
         const cameraInput = document.getElementById('cameraInput');
         const preview = document.getElementById('preview');
@@ -375,7 +378,6 @@
         let currentImage = null;
         let deferredPrompt = null;
 
-        // Camera functionality
         cameraBtn.addEventListener('click', () => {
             cameraInput.click();
         });
@@ -401,7 +403,6 @@
             error.style.display = 'none';
         });
 
-        // Manual search
         searchBtn.addEventListener('click', () => {
             const query = searchInput.value.trim();
             if (query) {
@@ -415,14 +416,13 @@
             }
         });
 
-        // Image analysis - Send to backend
         async function analyzeImage(imageData) {
             try {
                 showLoading('Analyzing with AI... (this may take 10-30 seconds on first try)');
                 hideError();
                 results.style.display = 'none';
 
-                // Send image to our backend for analysis
+                // ✅ corrected fetch
                 const response = await fetch(`${API_URL}/analyze`, { 
                     method: 'POST',
                     headers: {
@@ -436,7 +436,6 @@
 
                 const data = await response.json();
                 
-                // Handle errors from backend
                 if (data.error) {
                     let errorMsg = data.error;
                     if (data.suggestion) {
@@ -474,7 +473,6 @@
             }
         }
 
-        // Search product across platforms
         async function searchProduct(query, labels = []) {
             try {
                 showLoading(`Searching for "${query}"...`);
@@ -502,14 +500,11 @@
             }
         }
 
-        // Manual search
         async function searchManually(query) {
             await searchProduct(query);
         }
 
-        // Display results
         function displayResults(data, productName, labels = []) {
-            // If data comes from analyze endpoint, extract stats from nested structure
             const stats = data.stats ? data.stats.overall : data.stats;
             const allListings = data.all_listings || [];
             
@@ -526,7 +521,6 @@
 
             let html = '';
 
-            // Recognition info
             if (productName) {
                 html += `
                     <div class="recognition">
@@ -540,7 +534,6 @@
                 `;
             }
 
-            // Price stats
             html += `
                 <div class="stats">
                     <div class="stat-card">
@@ -556,12 +549,14 @@
                     <div class="stat-card">
                         <h4>Highest</h4>
                         <div class="value">CHF ${stats.max}</div>
-                        <div class="sub">Avg: CHF ${stats.average}</div>
+                        <div class="sub">Avg: CHF ${stats.average}</div>`
+            ;
+
+            html += `
                     </div>
                 </div>
             `;
 
-            // Platform listings
             const listings = data.listings || {};
             ['ricardo', 'tutti', 'ebay'].forEach(platform => {
                 const platformListings = listings[platform];
@@ -594,7 +589,6 @@
             results.style.display = 'block';
         }
 
-        // UI helpers
         function showLoading(message = 'Loading...') {
             loading.querySelector('p').textContent = message;
             loading.style.display = 'block';
@@ -613,7 +607,6 @@
             error.style.display = 'none';
         }
 
-        // PWA Install
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -631,12 +624,12 @@
             }
         });
 
-        // Service Worker registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(() => {
                 console.log('Service Worker registration failed');
             });
         }
+
     </script>
 </body>
 </html>
