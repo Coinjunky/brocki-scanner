@@ -1,5 +1,0 @@
-# From project root
-cat > netlify.toml <<'EOF'
-[build]
-  functions = "netlify/functions"
-EOF
